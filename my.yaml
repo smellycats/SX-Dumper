@@ -1,0 +1,7 @@
+mysql:
+  host: 10.123.123.123
+  port: 3306
+  user: kakou
+  pwd: kakou
+  db: sms
+  table:
