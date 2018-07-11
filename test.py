@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import time
 import subprocess
 
@@ -22,6 +23,7 @@ class Dumper(object):
         self.backup_path = self.my_ini['backup_path']
         self.interval = self.my_ini['interval']
         self.gc = self.my_ini['gc']
+        # 创建数据库
         db = TinyDB('db.json')
         self.table = db.table('dump')
 
@@ -32,7 +34,9 @@ class Dumper(object):
 
     def dump(self, ini, date):
         # 保存位置
-        folder = '{5}/{6}/{7}'.format(self.backup_path, ini['db'], date.format('YYYYMMDDTHHmmss'))
+        folder = '{0}/{1}/{2}'.format(self.backup_path, ini['db'], date.format('YYYYMMDDTHHmmss'))
+        if not os.path.isdir('{0}/{1}'.format(self.backup_path, ini['db'])):
+            os.makedirs('{0}/{1}'.format(self.backup_path, ini['db']))
         # shell命令
         cmd = '/root/tidb-enterprise-tools-latest-linux-amd64/bin/mydumper -h {0} -P {1} -u {2} -p {3} -t 16 -F 64 -B {4} --skip-tz-utc -o {5}'.format(ini['host'], ini['port'], ini['user'], ini['pwd'], ini['db'], folder)
         child = subprocess.Popen(cmd, shell=True)
@@ -48,11 +52,11 @@ class Dumper(object):
         if items == []:
             return
         created_date = arrow.get(items[0]['created_date'])
-        if(time.time() - created_date.timestamp) > gc*24*60*60:
+        os.removedirs(items[0]['folder'])
+        if(time.time() - created_date.timestamp) > gc*24*60*60.0:
             self.table.remove(doc_ids=[items[0].doc_id])
             logger.info('{0} has been remove from TinyDB'.format(items[0]))
-            
-    
+
     def time_check(self):
         now = arrow.now('PRC')
         if(now.timestamp - self.last_time.timestamp) < self.interval*60*60.0:
@@ -67,7 +71,7 @@ class Dumper(object):
                 self.time_check()
                 time.sleep(5)
             except Exception as e:
-                logger.error(e)
+                logger.exception(e)
                 time.sleep(30)
 
 if __name__ == "__main__":
