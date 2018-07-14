@@ -52,23 +52,26 @@ class Dumper(object):
         if items == []:
             return
         created_date = arrow.get(items[0]['created_date'])
-        os.removedirs(items[0]['folder'])
         if(time.time() - created_date.timestamp) > gc*24*60*60.0:
+            cmd = 'rm -rf {0}'.format(items[0]['folder'])
+            child = subprocess.Popen(cmd, shell=True)
+            child.wait()
             self.table.remove(doc_ids=[items[0].doc_id])
-            logger.info('{0} has been remove from TinyDB'.format(items[0]))
+            logger.info('{0} has been removed from TinyDB'.format(items[0]))
 
-    def time_check(self):
-        now = arrow.now('PRC')
+    def time_check(self, now):
         if(now.timestamp - self.last_time.timestamp) < self.interval*60*60.0:
-            return
-        self.dump(dict(self.my_ini['mysql']), now)
-        self.set_flag(now)
-        self.clean(self.gc)
+            return False
+        return True
 
     def run(self):
         while 1:
             try:
-                self.time_check()
+                now = arrow.now('PRC')
+                if self.time_check(now):
+                    self.dump(dict(self.my_ini['mysql']), now)
+                    self.set_flag(now)
+                    self.clean(self.gc)
                 time.sleep(5)
             except Exception as e:
                 logger.exception(e)
